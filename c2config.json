@@ -1,0 +1,9 @@
+{
+  "apfellbaseurl": "https://192.168.1.100/api/v1.0/",
+  "ssl": false,
+  "debug": true,
+  "bindaddress": "0.0.0.0:80",
+  "defaultpage": "index.html",
+  "checkinretries": 60,
+  "interval": 30
+}
