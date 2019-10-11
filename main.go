@@ -3,23 +3,24 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/kabukky/httpscerts"
 	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
+
+	"github.com/kabukky/httpscerts"
 )
 
 var logger *log.Logger
 
 type configuration struct {
-	Debug bool `json:"debug"`
-	Ssl bool `json:"ssl"`
-	ApfellBaseUrl string `json:"apfellbaseurl"`
-	Bindaddress string `json:"bindaddress"`
-	Interval int `json:"interval"`
-	DefaultPage string `json:"defaultpage"`
-	CheckinRetries int `json:"checkinretries"`
+	Debug          bool   `json:"debug"`
+	Ssl            bool   `json:"ssl"`
+	ApfellBaseUrl  string `json:"apfellbaseurl"`
+	Bindaddress    string `json:"bindaddress"`
+	Interval       int    `json:"interval"`
+	DefaultPage    string `json:"defaultpage"`
+	CheckinRetries int    `json:"checkinretries"`
 }
 
 var cf configuration
@@ -28,7 +29,7 @@ type token struct {
 	Token string `json:"token"`
 }
 
-func serveDefaultPage(w http.ResponseWriter, r *http.Request)  {
+func serveDefaultPage(w http.ResponseWriter, r *http.Request) {
 	log.Println("Received request ", r.URL)
 
 	if r.URL.Path == "/" && r.Method == "GET" {
@@ -47,8 +48,7 @@ func ravenlog(msg string) {
 	}
 }
 
-
-func main()  {
+func main() {
 	// Main function responsible
 	// Read the c2 profile config from the json file
 	configFile, err := os.Open("c2config.json")
@@ -90,7 +90,6 @@ func main()  {
 		if err != nil {
 			log.Fatal("Failed to start raven server: ", err)
 		}
-
 
 	} else {
 		ravenlog(fmt.Sprintf("Starting Web and Websockets server at http://%s and ws://%s", cf.Bindaddress, cf.Bindaddress))

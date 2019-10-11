@@ -25,8 +25,8 @@ type initialFileResponse struct {
 }
 
 type apfellFileDownloadMetaData struct {
-	Chunks int `json:"total_chunks"`
-	TaskID int `json:"task"`
+	Chunks int    `json:"total_chunks"`
+	TaskID string `json:"task"`
 }
 
 type apfellFileDownloadMeta struct {
@@ -57,7 +57,7 @@ type standardApfellCheckinResponse struct {
 	C2profile      string `json:"c2_profile"`
 	PCallback      string `json:"pcallback"`
 	Operation      string `json:"operation"`
-	ID             int    `json:"id"`
+	ID             string `json:"id"`
 	EncryptionType string `json:"encryption_type"`
 }
 
@@ -66,8 +66,8 @@ type standardApfellResponse struct {
 	Timestamp  string             `json:"timestamp"`
 	Task       nestedTaskResponse `json:"task"`
 	Response   string             `json:"response"`
-	ResponseID int                `json:"id"`
-	FileID     int                `json:"file_id"`
+	ResponseID string             `json:"id"`
+	FileID     string             `json:"file_id"`
 }
 
 type nestedTaskResponse struct {
@@ -83,7 +83,7 @@ type nestedTaskResponse struct {
 type fileChunkMetaData struct {
 	ChunkNum  int    `json:"chunk_num"`
 	ChunkData string `json:"chunk_data"`
-	FileID    int    `json:"file_id"`
+	FileID    string `json:"file_id"`
 }
 
 type fileChunkMeta struct {
@@ -104,7 +104,7 @@ type checkInStruct struct {
 type task struct {
 	Command string `json:"command"`
 	Params  string `json:"params"`
-	TaskID  int    `json:"id"`
+	TaskID  string `json:"id"`
 }
 
 func apfellRequest(endpoint string, data []byte, method string) []byte {
