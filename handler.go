@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/base64"
 	"fmt"
 	"math/rand"
 	"net"
@@ -70,25 +71,29 @@ func manageClient(c *websocket.Conn, clid string, newtask chan interface{}) {
 		}
 
 		// Check if the interface is empty
-		var resp []byte
+
 		if len(newMsg.Data) != 0 {
-			resp = apfellRequest("agent_message", []byte(newMsg.Data), "POST")
+			decoded, _ := base64.StdEncoding.DecodeString(newMsg.Data)
+			ravenlog(fmt.Sprintf("Received message from client %s\n", string(decoded)))
+			resp := apfellRequest("agent_message", []byte(newMsg.Data), "POST")
+
+			if len(resp) != 0 {
+				ravenlog(fmt.Sprintf("Received apfell response: %s\n", string(resp)))
+				response := message{}
+				response.Data = string(resp)
+				response.Client = false
+				response.Tag = ""
+
+				err = c.WriteJSON(response)
+				if err != nil {
+					ravenlog(fmt.Sprintf("Unable to send response to client %s", err))
+					break
+				}
+			}
 		}
 
 		// return the data to the client
 
-		if len(resp) != 0 {
-			response := message{}
-			response.Data = string(resp)
-			response.Client = false
-			response.Tag = ""
-
-			err = c.WriteJSON(response)
-			if err != nil {
-				ravenlog(fmt.Sprintf("Unable to send response to client %s", err))
-				break
-			}
-		}
 		time.Sleep(time.Duration(cf.Interval) * time.Second)
 	}
 }
