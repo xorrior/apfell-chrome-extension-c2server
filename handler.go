@@ -5,7 +5,6 @@ import (
 	"math/rand"
 	"net"
 	"net/http"
-	"reflect"
 	"time"
 
 	"github.com/gorilla/websocket"
@@ -72,7 +71,7 @@ func manageClient(c *websocket.Conn, clid string, newtask chan interface{}) {
 
 		// Check if the interface is empty
 		var resp []byte
-		if newMsg != reflect.Zero(reflect.TypeOf(newMsg)).Interface() {
+		if len(newMsg.Data) != 0 {
 			resp = apfellRequest("agent_message", []byte(newMsg.Data), "POST")
 		}
 
@@ -90,6 +89,6 @@ func manageClient(c *websocket.Conn, clid string, newtask chan interface{}) {
 				break
 			}
 		}
-
+		time.Sleep(time.Duration(cf.Interval) * time.Second)
 	}
 }
