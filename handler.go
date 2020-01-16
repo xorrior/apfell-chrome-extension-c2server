@@ -78,7 +78,8 @@ func manageClient(c *websocket.Conn, clid string, newtask chan interface{}) {
 			resp := apfellRequest("agent_message", []byte(newMsg.Data), "POST")
 
 			if len(resp) != 0 {
-				ravenlog(fmt.Sprintf("Received apfell response: %s\n", string(resp)))
+				decoded, _ := base64.StdEncoding.DecodeString(string(resp))
+				ravenlog(fmt.Sprintf("Received apfell response: %s\n", string(decoded)))
 				response := message{}
 				response.Data = string(resp)
 				response.Client = false
