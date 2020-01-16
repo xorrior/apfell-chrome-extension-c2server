@@ -5,6 +5,7 @@ import (
 	"math/rand"
 	"net"
 	"net/http"
+	"reflect"
 	"time"
 
 	"github.com/gorilla/websocket"
@@ -13,14 +14,11 @@ import (
 var conn net.Conn
 var upgrader = websocket.Upgrader{}
 
-
 type message struct {
-	Client bool `json:"client"`
-	Data string `json:"data"`
-	Tag string `json:"tag"`
+	Client bool   `json:"client"`
+	Data   string `json:"data"`
+	Tag    string `json:"tag"`
 }
-
-
 
 const charset = "abcdefghijklmnopqrstuvwxyz" +
 	"ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
@@ -72,7 +70,11 @@ func manageClient(c *websocket.Conn, clid string, newtask chan interface{}) {
 			break
 		}
 
-		resp := apfellRequest("agent_message", []byte(newMsg.Data), "POST")
+		// Check if the interface is empty
+		var resp []byte
+		if newMsg != reflect.Zero(reflect.TypeOf(newMsg)).Interface() {
+			resp = apfellRequest("agent_message", []byte(newMsg.Data), "POST")
+		}
 
 		// return the data to the client
 
