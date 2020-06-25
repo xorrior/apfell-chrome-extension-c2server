@@ -1,0 +1,1 @@
+{"name":"chrome-server","description":"Chrome Extension C2 server","params":[{"name":"Port","key":"PORT_REPLACE","hint":"Port"},{"name":"Interval","key":"INTERVAL_REPLACE","hint":"30"},{"name":"Host","key":"HOST_REPLACE","hint":"Hostname\/IP address"},{"name":"Use SSL (true|false)","key":"SSL_REPLACE","hint":"false"}],"payload_types":["chrome-extension"]}

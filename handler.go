@@ -92,9 +92,5 @@ func manageClient(c *websocket.Conn, clid string, newtask chan interface{}) {
 				}
 			}
 		}
-
-		// return the data to the client
-
-		time.Sleep(time.Duration(cf.Interval) * time.Second)
 	}
 }
