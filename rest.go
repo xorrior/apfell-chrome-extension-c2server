@@ -2,17 +2,24 @@ package main
 
 import (
 	"bytes"
+	"crypto/tls"
 	"fmt"
 	"io/ioutil"
 	"log"
 	"net/http"
+	"time"
 )
-
 
 func apfellRequest(endpoint string, data []byte, method string) []byte {
 	url := fmt.Sprintf("%s%s", cf.ApfellBaseUrl, endpoint)
 	log.Printf("Making request to %s", url)
-	client := &http.Client{}
+	tr := &http.Transport{
+		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+	}
+	client := &http.Client{
+		Timeout:   30 * time.Second,
+		Transport: tr,
+	}
 	var respbody []byte
 
 	if data == nil {
