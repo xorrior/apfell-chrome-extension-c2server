@@ -1,0 +1,10 @@
+{
+  "mythicbaseurl": "https://localhost:7443/api/v1.4/",
+  "ssl": false,
+  "sslkey":"",
+  "sslcert":"",
+  "websocketuri":"socket",
+  "debug": true,
+  "bindaddress": "0.0.0.0:8080",
+  "defaultpage": "index.html"
+}

@@ -73,7 +73,12 @@ func manageClient(c *websocket.Conn, clid string, newtask chan interface{}) {
 		// Check if the interface is empty
 
 		if len(newMsg.Data) != 0 {
-			decoded, _ := base64.StdEncoding.DecodeString(newMsg.Data)
+			decoded, err := base64.StdEncoding.DecodeString(newMsg.Data)
+			if err != nil {
+				ravenlog(fmt.Sprintf("Error decoding base64 string: %s", err.Error()))
+				continue
+			}
+
 			ravenlog(fmt.Sprintf("Received message from client %s\n", string(decoded)))
 			resp := apfellRequest("agent_message", []byte(newMsg.Data), "POST")
 

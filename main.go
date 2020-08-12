@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strings"
 
 	"github.com/kabukky/httpscerts"
 )
@@ -14,13 +15,14 @@ import (
 var logger *log.Logger
 
 type configuration struct {
-	Debug          bool   `json:"debug"`
-	Ssl            bool   `json:"ssl"`
-	ApfellBaseUrl  string `json:"apfellbaseurl"`
-	Bindaddress    string `json:"bindaddress"`
-	Interval       int    `json:"interval"`
-	DefaultPage    string `json:"defaultpage"`
-	CheckinRetries int    `json:"checkinretries"`
+	Debug         bool   `json:"debug"`
+	Ssl           bool   `json:"ssl"`
+	SSLKey        string `json:"sslkey"`
+	SSLCert       string `json:"sslcert"`
+	SocketURI     string `json:"websocketuri"`
+	ApfellBaseUrl string `json:"mythicbaseurl"`
+	Bindaddress   string `json:"bindaddress"`
+	DefaultPage   string `json:"defaultpage"`
 }
 
 var cf configuration
@@ -51,7 +53,7 @@ func ravenlog(msg string) {
 func main() {
 	// Main function responsible
 	// Read the c2 profile config from the json file
-	configFile, err := os.Open("c2config.json")
+	configFile, err := os.Open("config.json")
 
 	if err != nil {
 		log.Println(err)
@@ -72,7 +74,30 @@ func main() {
 	}
 
 	http.HandleFunc("/", serveDefaultPage)
-	http.HandleFunc("/websocket", socketHandler)
+	http.HandleFunc(fmt.Sprintf("/%s", cf.SocketURI), socketHandler)
+	if !strings.Contains(cf.SSLKey, "") && !strings.Contains(cf.SSLCert, "") {
+
+		// copy the key and cert to the local directory
+		keyfile, err := ioutil.ReadFile(cf.SSLKey)
+		if err != nil {
+			log.Println("Unable to read key file ", err.Error())
+		}
+
+		err = ioutil.WriteFile("key.pem", keyfile, 0644)
+		if err != nil {
+			log.Println("Unable to write key file ", err.Error())
+		}
+
+		certfile, err := ioutil.ReadFile(cf.SSLCert)
+		if err != nil {
+			log.Println("Unable to read cert file ", err.Error())
+		}
+
+		err = ioutil.WriteFile("cert.pem", certfile, 0644)
+		if err != nil {
+			log.Println("Unable to write cert file ", err.Error())
+		}
+	}
 
 	if cf.Ssl == true {
 		err := httpscerts.Check("cert.pem", "key.pem")
